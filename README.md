@@ -96,7 +96,7 @@ RETURN y.year,count(r)
 Answer: 10 times in year 2021. 
 
 -----
-**Case four:** How often does Anil Kumar shop?
+**Case four:** What's the relationship between shopping and education?
 ```
 MATCH (p:Person)
 CALL {
