@@ -10,6 +10,7 @@ docker run \
     -e NEO4J_apoc_import_file_enabled=true \
     -e NEO4J_apoc_import_file_use__neo4j__config=true \
     -e NEO4JLABS_PLUGINS=\[\"apoc\"\] \
+    --env NEO4JLABS_PLUGINS='["graph-data-science"]'\
     neo4j
 ```
 
@@ -96,28 +97,96 @@ RETURN y.year,count(r)
 Answer: 10 times in year 2021. 
 
 -----
-**Case four:** What's the relationship between shopping and education?
+
+## Data Insights
+### General Individual Similarity 
+When looking only at the location based similarity, Alice Gan and Anil Kumar are mostly similar 
+```
+CALL gds.graph.project(
+    'myGraph3',
+    ['Country','Person'], 
+    'PERSON_ACTION_LOCATION'
+)
+CALL gds.beta.closeness.stream('myGraph3')
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId).name AS name, score
+ORDER BY score DESC
+Person1	Person2	similarity
+"Alice Gan"	"Anil Kumar"	0.181
+"Alice Gan"	"Ariff Johan"	0.091
+"Anil Kumar"	"Ariff Johan"	0.083
+```
+The country they visited most are Vietnam and Malaysia. 
+```
+MATCH (p:Person) - [:PERSON_ACTION_LOCATION] - (c:Country)
+WHERE p.name = "Alice Gan" or p.name = "Anil Kumar"
+Return c.name, count(c.name)
+```
+Anil Kumar and Ariff Johan are, on the other hand, similar in terms of the activity year. 
+```
+Person1	Person2	similarity
+"Anil Kumar"	"Ariff Johan"	0.666
+"Alice Gan"	"Ariff Johan"	0.636
+"Anil Kumar"	"Alice Gan"	0.538
+```
+
+After including both time and location, we can see all three individuals are quite similar. This is because 
+all of them **has studied at Smart National University of Vietnam during 1992	and 1995 for the same degree.** 
+They also visited Vietnam in September 2021. 
+```
+CALL gds.graph.project(
+    'myGraph',
+    ['Country','Person','Year'], 
+    ['PERSON_ACTION_LOCATION','PERSON_ACTION_YEAR_START']
+)
+CALL gds.beta.closeness.stream('myGraph')
+YIELD nodeId, score
+RETURN gds.util.asNode(nodeId).name AS name, score
+ORDER BY score DESC
+
+Person1	Person2	similarity
+"Alice Gan"	"Anil Kumar"	0.375
+"Anil Kumar"	"Ariff Johan"	0.375
+"Alice Gan"	"Ariff Johan"	0.363
+```
+### Individual Activities
+The linkage between the transaction data and the travel data gives further evidence that all three individuals visited 
+Vietnam together on 2021-09-26
+```
+MATCH (p:Person)-[r:HAS_ACTIVITY {type:'shopping'}]-(e)-[:EVENT_LOCATION_AT]-(c)
+WHERE  c.name = "Vietnam" and e.date >= date("2021-09-26")
+RETURN p.name, e.merchant,  sum(e.amount)
+
+name	e.merchant	sum(e.amount)
+"Alice Gan"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
+"Ariff Johan"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
+"Anil Kumar"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
+```
+
+Although they graduated from the same place, they work in the same country as their citizenship. 
+
 ```
 MATCH (p:Person)
 CALL {
   WITH p
- MATCH (p:Person)-[r:HAS_ACTIVITY {type:'shopping'}]-()
-  RETURN count(r) AS count_shopping
+  MATCH (p:Person)-[:PERSON_ACTION_LOCATION {type:'work'}]-(c)
+  RETURN c.name AS work_country
 }
 CALL {
   WITH p
-  MATCH (p:Person)-[r:HAS_ACTIVITY {type:'education'}]-()
-  RETURN count(r) AS count_education
+  MATCH (p:Person)-[:PERSON_ACTION_LOCATION {type:'education'}]-(c)
+  RETURN c.name AS education_country
 }
-RETURN p.name, count_shopping,count_education
+RETURN p.name, work_country
+
+p.name	work_country	education_country
+"Alice Gan"	"Malaysia"	"Malaysia"
+"Alice Gan"	"Malaysia"	"Vietnam"
+"Anil Kumar"	"India"	"Malaysia"
+"Anil Kumar"	"India"	"Vietnam"
+"Ariff Johan"	"Singapore"	"Vietnam"
+"Ariff Johan"	"Singapore"	"Singapore"
 
 ```
 
-Answer:
-There is no correlation. 
-```
-p.name	count_shopping	count_education
-"Anil Kumar"	10	5
-"Alice Gan"	10	3
-"Ariff Johan"	10	4
-```
+
