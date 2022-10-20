@@ -6,9 +6,7 @@ def data_import(driver):
     '''Function for data import'''
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
-
         try:
-
             # Import Education Data
             session.run(
                 """
@@ -24,12 +22,12 @@ def data_import(driver):
                 MERGE (d1:Year {year: toInteger(row.startyear)})
                 MERGE (d2:Year {year: toInteger(row.endyear)})
                 MERGE (p)-[:HAS_ACTIVITY {type:'education'}]->(e)
-                MERGE (p)-[:PERSON_ACTION_LOCATION]->(c)
-                MERGE (p)-[:PERSON_ACTION_YEAR_START]->(d1)
-                MERGE (p)-[:PERSON_ACTION_YEAR_END]->(d2)
-                MERGE (e)-[:EVENT_ACTION_YEAR_START]->(d1)
-                MERGE (e)-[:EVENT_ACTION_YEAR_END]->(d2)
-                MERGE (e)-[:EVENT_LOCATION_AT]->(c)
+                MERGE (p)-[:PERSON_ACTION_LOCATION {type:'education'}]->(c)
+                MERGE (p)-[:PERSON_ACTION_YEAR_START {type:'education'}]->(d1)
+                MERGE (p)-[:PERSON_ACTION_YEAR_END {type:'education'}]->(d2)
+                MERGE (e)-[:EVENT_ACTION_YEAR_START {type:'education'}]->(d1)
+                MERGE (e)-[:EVENT_ACTION_YEAR_END {type:'education'}]->(d2)
+                MERGE (e)-[:EVENT_LOCATION_AT {type:'education'}]->(c)
                 RETURN p
                 """
             )
@@ -43,14 +41,14 @@ def data_import(driver):
                 AS row
                 WITH row, apoc.date.parse(row.transactiondate, "ms", "EEEEE, dd MMMMM yyyy") as ms
                 MERGE (p:Person {passport_number:row.passportnumber, name:row.name})
-                MERGE (t:Transaction {passport_number:row.passportnumber, cardNumber:row.cardnumber,merchant:row.merchant,amount:row.amount,date:date(datetime({epochmillis: ms})) })
+                MERGE (t:Transaction {passport_number:row.passportnumber, cardNumber:row.cardnumber,merchant:row.merchant,amount: apoc.number.parseFloat(row.amount, '$#.;(#.)', 'it'),date:date(datetime({epochmillis: ms})) })
                 MERGE (p)-[:HAS_ACTIVITY {type:'shopping'}]-(t)
                 MERGE (c:Country {name:row.country})
                 MERGE (d:Year {year: t.date.year})
-                MERGE (p)-[:PERSON_ACTION_LOCATION]->(c)
-                MERGE (p)-[:PERSON_ACTION_YEAR_START]->(d)
-                MERGE (t)-[:EVENT_LOCATION_AT]->(c)
-                MERGE (t)-[:EVENT_ACTION_YEAR_START]->(d)
+                MERGE (p)-[:PERSON_ACTION_LOCATION {type:'shopping'}]->(c)
+                MERGE (p)-[:PERSON_ACTION_YEAR_START {type:'shopping'}]->(d)
+                MERGE (t)-[:EVENT_LOCATION_AT {type:'shopping'}]->(c)
+                MERGE (t)-[:EVENT_ACTION_YEAR_START {type:'shopping'}]->(d)
                 RETURN p,t
                 """
             )
@@ -75,15 +73,15 @@ def data_import(driver):
                 MERGE (c:Country {name:row.departurecountry})
                 MERGE (c1:Country {name:row.citizenship})
                 MERGE (c2:Country {name:row.arrivalcountry})
-                MERGE (p)-[:PERSON_ACTION_LOCATION]->(c2)
-                MERGE (p)-[:PERSON_ACTION_ORIGINAL_LOCATION]->(c)
+                MERGE (p)-[:PERSON_ACTION_LOCATION {type:'travel'}]->(c2)
+                MERGE (p)-[:PERSON_ACTION_ORIGINAL_LOCATION {type:'travel'}]->(c)
                 MERGE (p)-[:IS_CITIZEN_OF]->(c1)
-                MERGE (p)-[:PERSON_ACTION_YEAR_START]->(d1)
-                MERGE (p)-[:PERSON_ACTION_YEAR_END]->(d2)
-                MERGE (t)-[:EVENT_LOCATION_AT]->(c2)
-                MERGE (t)-[:EVENT_ORIGINAL_LOCATION]->(c)
-                MERGE (t)-[:EVENT_ACTION_YEAR_START]->(c2)
-                MERGE (t)-[:EVENT_ACTION_YEAR_END]->(c)
+                MERGE (p)-[:PERSON_ACTION_YEAR_START {type:'travel'}]->(d1)
+                MERGE (p)-[:PERSON_ACTION_YEAR_END {type:'travel'}]->(d2)
+                MERGE (t)-[:EVENT_LOCATION_AT {type:'travel'}]->(c2)
+                MERGE (t)-[:EVENT_ORIGINAL_LOCATION {type:'travel'}]->(c)
+                MERGE (t)-[:EVENT_ACTION_YEAR_START {type:'travel'}]->(c2)
+                MERGE (t)-[:EVENT_ACTION_YEAR_END {type:'travel'}]->(c)
                 RETURN p
                 """
             )
@@ -104,12 +102,12 @@ def data_import(driver):
                 MERGE (d1:Year {year: toInteger(row.startyear)})
                 MERGE (d2:Year {year: coalesce(toInteger(row.endyear),2100)})
                 MERGE (p)-[:HAS_ACTIVITY {type:'work'}]->(e)
-                MERGE (p)-[:PERSON_ACTION_LOCATION]->(c)
-                MERGE (p)-[:PERSON_ACTION_YEAR_START]->(d1)
-                MERGE (p)-[:PERSON_ACTION_YEAR_END]->(d2)
-                MERGE (e)-[:EVENT_LOCATION_AT]->(c)
-                MERGE (e)-[:EVENT_ACTION_YEAR_START]->(d1)
-                MERGE (e)-[:PERSON_ACTION_YEAR_END]->(d2)
+                MERGE (p)-[:PERSON_ACTION_LOCATION {type:'work'}]->(c)
+                MERGE (p)-[:PERSON_ACTION_YEAR_START {type:'work'}]->(d1)
+                MERGE (p)-[:PERSON_ACTION_YEAR_END {type:'work'}]->(d2)
+                MERGE (e)-[:EVENT_LOCATION_AT {type:'work'}]->(c)
+                MERGE (e)-[:EVENT_ACTION_YEAR_START {type:'work'}]->(d1)
+                MERGE (e)-[:PERSON_ACTION_YEAR_END {type:'work'}]->(d2)
                 RETURN p
                 """
             )
@@ -124,3 +122,32 @@ if __name__ == "__main__":
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "s3cr3t"))
     driver.verify_connectivity()
     data_import(driver)
+
+
+    with driver.session() as session:
+        result = session.run(
+            '''
+            MATCH (p:Country)
+            CALL {
+              WITH p
+             MATCH (p:Country)-[r:EVENT_LOCATION_AT]-(e:Transaction)
+              RETURN count(r) AS count_shopping
+            }
+            CALL {
+              WITH p
+              MATCH (p:Country)-[r:EVENT_LOCATION_AT]-(e:Education)
+              RETURN count(r) AS count_education
+            }
+            CALL {
+              WITH p
+              MATCH (p:Country)-[r:EVENT_LOCATION_AT]-(e:Work)
+              RETURN count(r) AS count_work
+            }
+            CALL {
+              WITH p
+              MATCH (p:Country)-[r:EVENT_LOCATION_AT]-(e:Trip)
+              RETURN count(r) AS count_trip
+            }
+            RETURN p.name, count_shopping,count_education,count_work,count_trip
+            '''
+        )
