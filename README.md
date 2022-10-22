@@ -158,7 +158,7 @@ Person1	Person2	similarity
 The linkage between the transaction data and the travel data gives further evidence that all three individuals visited 
 Vietnam together on 2021-09-26
 
-![img_3.png width="200"](img_3.png)
+![img_1.png](img_1.png)
 
 ```
 MATCH (p:Person)-[r:HAS_ACTIVITY {type:'shopping'}]-(e)-[:EVENT_LOCATION_AT]-(c)
