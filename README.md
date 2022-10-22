@@ -169,6 +169,14 @@ name	e.merchant	sum(e.amount)
 "Alice Gan"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
 "Ariff Johan"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
 "Anil Kumar"	"GRAND COCONUT HOTEL, VIETNAM"	1230.0
+
+match (e) - [:EVENT_ACTION_YEAR_START] - (y:Year) 
+match (p:Person) - [:PERSON_ACTION_YEAR_START] - (y:Year) 
+match (p:Person) - [:HAS_ACTIVITY] - (e)
+match (p:Person) - [:PERSON_ACTION_LOCATION] - (c)
+match (e) - [:EVENT_LOCATION_AT] - (c)
+where c.name = "Vietnam"
+return y,p,e,c
 ```
 
 Although they graduated from the same place, they work in the same country as their citizenship. 
