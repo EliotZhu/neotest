@@ -118,7 +118,7 @@ Person1	Person2	similarity
 "Alice Gan"	"Ariff Johan"	0.091
 "Anil Kumar"	"Ariff Johan"	0.083
 ```
-The country they visited most are Vietnam and Malaysia. 
+The country they visited most (apart from their home country) is Vietnam. 
 ![img_2.png](img_2.png)
 ```
 MATCH (p:Person) - [:PERSON_ACTION_LOCATION] - (c:Country)
