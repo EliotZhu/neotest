@@ -54,7 +54,9 @@ After code execution 103 nodes will be created:
 - 6 Work nodes
 - 19 Year nodes
 
+
 Please refer to neo4j_test.py for the import application. 
+
 
 ## Test of the database based on use cases
 
@@ -117,6 +119,7 @@ Person1	Person2	similarity
 "Anil Kumar"	"Ariff Johan"	0.083
 ```
 The country they visited most are Vietnam and Malaysia. 
+![img_2.png](img_2.png)
 ```
 MATCH (p:Person) - [:PERSON_ACTION_LOCATION] - (c:Country)
 WHERE p.name = "Alice Gan" or p.name = "Anil Kumar"
@@ -131,8 +134,10 @@ Person1	Person2	similarity
 ```
 
 After including both time and location, we can see all three individuals are quite similar. This is because 
-all of them **has studied at Smart National University of Vietnam during 1992	and 1995 for the same degree.** 
+all of them **has studied at Smart National University of Vietnam during 1992 and 1995 for the same degree.** 
 They also visited Vietnam in September 2021. 
+
+
 ```
 CALL gds.graph.project(
     'myGraph',
@@ -152,6 +157,9 @@ Person1	Person2	similarity
 ### Individual Activities
 The linkage between the transaction data and the travel data gives further evidence that all three individuals visited 
 Vietnam together on 2021-09-26
+
+![img_3.png](img_3.png)
+
 ```
 MATCH (p:Person)-[r:HAS_ACTIVITY {type:'shopping'}]-(e)-[:EVENT_LOCATION_AT]-(c)
 WHERE  c.name = "Vietnam" and e.date >= date("2021-09-26")
@@ -164,6 +172,8 @@ name	e.merchant	sum(e.amount)
 ```
 
 Although they graduated from the same place, they work in the same country as their citizenship. 
+
+![img_4.png](img_4.png)
 
 ```
 MATCH (p:Person)
